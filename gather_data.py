@@ -17,7 +17,7 @@ NAME = input("Your name: ")
 ACTION = input("Activity (running/rowing/lifting/jumpingjacks): ")
 NUMBER = input("Recording number: ")
 
-filename = f"{NAME}-{ACTION}-{NUMBER}.csv"
+filename = f"data/{NAME}-{ACTION}-{NUMBER}.csv"
 
 print(f"Output file: {filename}")
 
