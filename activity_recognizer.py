@@ -40,14 +40,4 @@ model.fit(X_train, y_train)
 
 # evaluate
 accuracy = model.score(X_test, y_test)
-
-
-# predictions
-y_pred = model.predict(X_test)
-
-# confusion matrix
-
-
-cm = confusion_matrix(y_test, y_pred)
-print("Confusion Matrix:\n", cm)
 print("Accuracy:", accuracy)
