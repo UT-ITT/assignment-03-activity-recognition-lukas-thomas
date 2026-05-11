@@ -85,6 +85,21 @@ def get_activity_from_filename(filename):
     # assumes structure: name-activity-number.csv
     return parts[1]
 
+def get_person_from_filename(filename):
+    """
+    Example filename:
+    susi-running-1.csv
+
+    Returns:
+    susi
+    """
+
+    stem = Path(filename).stem
+    parts = stem.split("-")
+
+    # assumes structure: name-activity-number.csv
+    return parts[0]
+
 
 # ---------------------------------------------------
 # MAIN DATASET CREATION
@@ -115,6 +130,9 @@ def create_feature_dataset(data_dir):
 
         # add label
         features["activity"] = get_activity_from_filename(file_path.name)
+
+        # add person
+        features["person"] = get_person_from_filename(file_path.name)
 
         rows.append(features)
 
