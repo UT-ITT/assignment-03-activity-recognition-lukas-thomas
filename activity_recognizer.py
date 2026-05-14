@@ -9,6 +9,7 @@ from sklearn.metrics import confusion_matrix
 
 # load features
 feature_df = create_feature_dataset("data")
+#feature_df = create_feature_dataset("data_without_no_gyro")
 
 # split features / labels
 X = feature_df.drop(columns=["activity", "person"])
