@@ -60,6 +60,7 @@ def extract_features(df):
         features[f"{col}_mean"] = np.mean(values)
         features[f"{col}_max"] = np.max(values)
         features[f"{col}_std"] = np.std(values)
+        features[f"{col}_iqr"] = np.percentile(values, 75) - np.percentile(values, 25)
     
 
         rms = np.sqrt(np.mean(values**2))
