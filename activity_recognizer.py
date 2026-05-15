@@ -86,7 +86,7 @@ def run_multi_seed_test(X, y, persons, seeds):
 
 
 
-def run_logo_evaluation(X, y, persons, label_encoder):
+def run_logo_evaluation(X, y, persons, label_encoder, classifier = get_pipeline()):
     logo = LeaveOneGroupOut()
     scores = []
     
@@ -95,10 +95,9 @@ def run_logo_evaluation(X, y, persons, label_encoder):
         X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
         y_train, y_test = y[train_idx], y[test_idx]
         
-        clf = get_pipeline()
-        clf.fit(X_train, y_train)
+        classifier.fit(X_train, y_train)
         
-        score = clf.score(X_test, y_test)
+        score = classifier.score(X_test, y_test)
         scores.append(score)
         
         # Identify which person was tested (optional)
