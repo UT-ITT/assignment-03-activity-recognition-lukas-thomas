@@ -48,7 +48,7 @@ def plot_cm(y_test, y_pred, target_names, seed):
     plt.show()
     return cm
 
-def run_single_evaluation(X, y, persons, seed, label_encoder, show_plot=True):
+def run_single_evaluation(X, y, persons, seed, label_encoder, show_plot=True, classifier=get_pipeline()):
     """Performs one train/test split and evaluates the model."""
     gss = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=seed)
     train_idx, test_idx = next(gss.split(X, y, groups=persons))
@@ -57,7 +57,7 @@ def run_single_evaluation(X, y, persons, seed, label_encoder, show_plot=True):
     y_train, y_test = y[train_idx], y[test_idx]
     
     # Build and train pipeline
-    clf = get_pipeline()
+    clf = classifier
     clf.fit(X_train, y_train)
     
     # Evaluate
@@ -93,3 +93,8 @@ if __name__ == "__main__":
     
     # 3. Robustness Check (Multiple Seeds)
     run_multi_seed_test(X, y, persons, SEEDS_FOR_TESTING)
+
+    # Test for a specific classifier object on test features
+    # clf1 = get_pipeline()
+    # run_single_evaluation(X, y, persons, SEED, encoder, classifier=clf1)
+    
