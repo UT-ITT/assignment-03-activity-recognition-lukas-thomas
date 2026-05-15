@@ -140,47 +140,52 @@ def get_person_from_filename(filename):
     # assumes structure: name-activity-number.csv
     return parts[0]
 
+def segment_data(df, window_size=200, step_size=100):
+    """
+    Splits a DataFrame into segments of a fixed size.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The full recording.
+    window_size : int
+        Number of samples per window (e.g., 200 for 2 seconds at 100Hz).
+    step_size : int
+        Number of samples to slide the window. 100 = 50% overlap.
+        
+    Yields
+    ------
+    pd.DataFrame
+        A segment of the original data.
+    """
+    for start in range(0, len(df) - window_size + 1, step_size):
+        yield df.iloc[start : start + window_size]
+
 
 # ---------------------------------------------------
 # MAIN DATASET CREATION
 # ---------------------------------------------------
 
-def create_feature_dataset(data_dir):
-    """
-    Creates one dataframe where:
-    - each row = one recording
-    - columns = extracted features + activity label
-    """
-
+def create_feature_dataset(data_dir, window_size=200, step_size=100):
     rows = []
-
     csv_files = list(Path(data_dir).glob("*.csv"))
 
-    print(f"Found {len(csv_files)} CSV files")
-
     for file_path in csv_files:
-
-        print(f"Processing: {file_path.name}")
-
-        # load csv
         df = pd.read_csv(file_path)
+        
+        # Segment the data into windows
+        for segment in segment_data(df, window_size, step_size):
+            # Extract features from the segment instead of the whole df
+            features = extract_features(segment)
 
-        # extract features
-        features = extract_features(df)
+            # Add labels and metadata
+            features["activity"] = get_activity_from_filename(file_path.name)
+            features["person"] = get_person_from_filename(file_path.name)
+            
+            rows.append(features)
 
-        # add label
-        features["activity"] = get_activity_from_filename(file_path.name)
-
-        # add person
-        features["person"] = get_person_from_filename(file_path.name)
-
-        rows.append(features)
-
-    # create dataframe
     feature_df = pd.DataFrame(rows)
-
     return feature_df
-
 
 # ---------------------------------------------------
 # RUN SCRIPT

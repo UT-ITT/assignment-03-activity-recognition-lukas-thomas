@@ -16,7 +16,7 @@ SEED = 10
 DATA_PATH = "data_without_no_gyro"
 SEEDS_FOR_TESTING = [5, 10, 42, 100, 420, 1000, 21, 99, 88, 69]
 
-def load_and_preprocess_data(path):
+def load_and_preprocess_data(path, window_size=250, step_size=125):
     """Loads dataset and encodes labels."""
     df = create_feature_dataset(path)
     
