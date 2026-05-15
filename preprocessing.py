@@ -52,6 +52,8 @@ def extract_features(df):
         features[f"{col}_max"] = np.max(values)
         features[f"{col}_iqr"] = np.percentile(values, 75) - np.percentile(values, 25)
         features[f"{col}_skew"] = skew(values)
+
+    
         
 
     # Richer features for magnitudes 
@@ -78,21 +80,16 @@ def extract_features(df):
         
         
         # --- FFT only on Magnitudes ---
+        
         fft_values = np.abs(np.fft.rfft(values))
         freqs = np.fft.rfftfreq(len(values), d=1/fs)
         
         # We only need the dominant frequency and the total energy
+        
         features[f"{col}_dom_freq"] = freqs[np.argmax(fft_values[1:]) + 1]
         features[f"{col}_energy"] = np.sum(fft_values**2) / len(values)
-
         
-        
-
-
-        
-
     features['gyro_acc_energy_ratio'] = features['gyro_mag_energy'] / (features['acc_mag_energy'] + 1e-9)
-    
 
 
     # FINAL SAFETY SWEEP: If ANY feature is still NaN, force it to 0.0
