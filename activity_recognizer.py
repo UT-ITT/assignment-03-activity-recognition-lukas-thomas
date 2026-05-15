@@ -7,6 +7,7 @@ from sklearn.svm import SVC
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import LeaveOneGroupOut
 
 # Assuming preprocessing.py exists in the same directory
 from preprocessing import create_feature_dataset
@@ -83,6 +84,29 @@ def run_multi_seed_test(X, y, persons, seeds):
     print(f"Mean Accuracy: {np.mean(results):.4f}")
     print(f"Std Dev: {np.std(results):.4f}")
 
+
+
+def run_logo_evaluation(X, y, persons, label_encoder):
+    logo = LeaveOneGroupOut()
+    scores = []
+    
+    # logo.split returns indices for one person at a time
+    for train_idx, test_idx in logo.split(X, y, groups=persons):
+        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        y_train, y_test = y[train_idx], y[test_idx]
+        
+        clf = get_pipeline()
+        clf.fit(X_train, y_train)
+        
+        score = clf.score(X_test, y_test)
+        scores.append(score)
+        
+        # Identify which person was tested (optional)
+        tested_person = persons.iloc[test_idx].unique()[0]
+        print(f"Accuracy for Person {tested_person}: {score:.4f}")
+    
+    print(f"\nOverall LOGO Mean Accuracy: {np.mean(scores):.4f}")
+
 if __name__ == "__main__":
     # 1. Prepare Data
     print("Loading data...")
@@ -93,6 +117,9 @@ if __name__ == "__main__":
     
     # 3. Robustness Check (Multiple Seeds)
     run_multi_seed_test(X, y, persons, SEEDS_FOR_TESTING)
+
+    # 4 LOGO 
+    run_logo_evaluation(X, y, persons, encoder)
 
     # Test for a specific classifier object on test features
     # clf1 = get_pipeline()
