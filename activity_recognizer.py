@@ -14,7 +14,7 @@ from preprocessing import create_feature_dataset
 
 # Constants
 SEED = 10
-DATA_PATH = "data_without_no_gyro"
+DATA_PATH = "data"
 SEEDS_FOR_TESTING = [5, 10, 42, 100, 420, 1000, 21, 99, 88, 69]
 
 def load_and_preprocess_data(path):
