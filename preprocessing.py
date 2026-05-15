@@ -4,6 +4,7 @@
 from pathlib import Path
 import pandas as pd
 import numpy as np
+from scipy.stats import skew
 
 
 DATA_DIR = Path("data")
@@ -13,6 +14,7 @@ DATA_DIR = Path("data")
 # ---------------------------------------------------
 # FEATURE EXTRACTION
 # ---------------------------------------------------
+
 
 def extract_features(df):
     """
@@ -28,103 +30,79 @@ def extract_features(df):
     dict
         Dictionary containing extracted features.
     """
-
     features = {}
+    fs = 100  # Required 100Hz sampling rate [cite: 16]
+    df = df.fillna(0)
 
-    sensor_columns = [
-        "acc_x", "acc_y", "acc_z",
-        "gyro_x", "gyro_y", "gyro_z"
-    ]
-
-    # ---------------------------------------------
-    # Basic statistical features
-    # ---------------------------------------------
-    for col in sensor_columns:
-
-        values = df[col].fillna(0) # Replace NaNs with 0
-
-        features[f"{col}_mean"] = values.mean()
-        features[f"{col}_std"] = values.std()
-
-        features[f"{col}_min"] = values.min()
-        features[f"{col}_max"] = values.max()
-
-        features[f"{col}_median"] = values.median()   
-
-
-
-        # # 3. FFT (Check if signal is not just constant zeros)
-        # if values.std() == 0:
-        #     features[f"{col}_dom_freq"] = 0
-        #     features[f"{col}_dom_mag"] = 0
-        #     features[f"{col}_spectral_energy"] = 0
-        # else:
-        #     fft_vals = np.fft.rfft(values)
-        #     fft_freq = np.fft.rfftfreq(len(values), d=1/100)
-        #     magnitudes = np.abs(fft_vals) / len(values)
-            
-        #     # Find dominant freq (ignore DC)
-        #     dominant_idx = np.argmax(magnitudes[1:]) + 1
-        #     features[f"{col}_dom_freq"] = fft_freq[dominant_idx]
-        #     features[f"{col}_dom_mag"] = magnitudes[dominant_idx]
-        #     features[f"{col}_spectral_energy"] = np.sum(magnitudes**2)
-
-
-    # ---------------------------------------------
-    # Example combined acceleration magnitude
-    # ---------------------------------------------
-    # acc_magnitude = np.sqrt(
-    #     df["acc_x"]**2 +
-    #     df["acc_y"]**2 +
-    #     df["acc_z"]**2
-    # )
-
-    # features["acc_mag_mean"] = acc_magnitude.mean()
-    # features["acc_mag_max"] = acc_magnitude.max()
-    # features["acc_mag_std"] = acc_magnitude.std()
     
-    # 2. Combined Magnitude (Orientation Invariant)
-    # This prevents the model from failing if a person holds the sensor slightly differently
-    acc_magnitude = np.sqrt(df["acc_x"]**2 + df["acc_y"]**2 + df["acc_z"]**2).fillna(0)
-    gyro_magnitude = np.sqrt(df["gyro_x"]**2 + df["gyro_y"]**2 + df["gyro_z"]**2).fillna(0)
+    # 1. Magnitudes (The most robust signals)
+    df['acc_mag'] = np.sqrt(df['acc_x']**2 + df['acc_y']**2 + df['acc_z']**2)
+    df['gyro_mag'] = np.sqrt(df['gyro_x']**2 + df['gyro_y']**2 + df['gyro_z']**2)
 
-    features["acc_mag_mean"] = acc_magnitude.mean()
-    features["acc_mag_max"] = acc_magnitude.max()
-    features["acc_mag_std"] = acc_magnitude.std()
+    # 2. Strategic Loop
+    raw_axes = ["acc_x", "acc_y", "acc_z", "gyro_x", "gyro_y", "gyro_z"]
+    magnitudes = ["acc_mag", "gyro_mag"]
 
-    features["gyro_mag_mean"] = gyro_magnitude.mean()
-    features["gyro_mag_max"] = gyro_magnitude.max()
-    features["gyro_mag_std"] = gyro_magnitude.std()
 
-    # 3. Stable Frequency Features: Energy Bands (Instead of Dominant Frequency)
-    # We only apply FFT to the magnitudes to keep the feature count low and relevant
-    # for name, mag_data in [("acc_mag", acc_magnitude), ("gyro_mag", gyro_magnitude)]:
-    #     if mag_data.std() > 0:
-    #         fft_vals = np.fft.rfft(mag_data)
-    #         magnitudes = np.abs(fft_vals) / len(mag_data)
-    #         fft_freq = np.fft.rfftfreq(len(mag_data), d=1/100) # Assuming 100Hz
-            
-    #         # Ignore DC component (0 Hz)
-    #         freqs = fft_freq[1:]
-    #         mags = magnitudes[1:]
-            
-    #         # Create masks for frequency bands
-    #         # Adjust these ranges based on your specific activities
-    #         low_band = (freqs >= 0.1) & (freqs <= 3.0)   # Slow movements, posture changes
-    #         med_band = (freqs > 3.0) & (freqs <= 10.0)   # Active human movement (running/walking)
-    #         high_band = (freqs > 10.0)                   # Jitters, impacts, fast transients
-            
-    #         # Calculate sum of energy in each band
-    #         features[f"{name}_energy_low"] = np.sum(mags[low_band]**2) if np.any(low_band) else 0
-    #         features[f"{name}_energy_med"] = np.sum(mags[med_band]**2) if np.any(med_band) else 0
-    #         features[f"{name}_energy_high"] = np.sum(mags[high_band]**2) if np.any(high_band) else 0
-    #     else:
-    #         features[f"{name}_energy_low"] = 0
-    #         features[f"{name}_energy_med"] = 0
-    #         features[f"{name}_energy_high"] = 0
+    # Simple stats for raw axes (captures general orientation/pose)
+    for col in raw_axes:
+        values = df[col]
+        features[f"{col}_mean"] = np.mean(values)
+        features[f"{col}_std"] = np.std(values)
+        features[f"{col}_max"] = np.max(values)
+        features[f"{col}_iqr"] = np.percentile(values, 75) - np.percentile(values, 25)
+        features[f"{col}_skew"] = skew(values)
+        
+
+    # Richer features for magnitudes 
+    for col in magnitudes:
+        values = df[col]
+        features[f"{col}_mean"] = np.mean(values)
+        features[f"{col}_max"] = np.max(values)
+        features[f"{col}_std"] = np.std(values)
+    
+
+        rms = np.sqrt(np.mean(values**2))
+
+        features[f"{col}_crest_factor"] = (
+            np.max(np.abs(values)) / (rms + 1e-9)
+        )
+
+         # autocorr
+        for lag in [20, 50, 100]:
+            corr_value = df[col].corr(df[col].shift(lag))
+            if not np.isnan(corr_value):
+                features[f"{col}_autocorr_{lag}"] = corr_value
+            else:
+                features[f"{col}_autocorr_{lag}"] = 0.0
+        
+        
+        # --- FFT only on Magnitudes ---
+        fft_values = np.abs(np.fft.rfft(values))
+        freqs = np.fft.rfftfreq(len(values), d=1/fs)
+        
+        # We only need the dominant frequency and the total energy
+        features[f"{col}_dom_freq"] = freqs[np.argmax(fft_values[1:]) + 1]
+        features[f"{col}_energy"] = np.sum(fft_values**2) / len(values)
+
+        
+        
+
+
+        
+
+    features['gyro_acc_energy_ratio'] = features['gyro_mag_energy'] / (features['acc_mag_energy'] + 1e-9)
+    
+
+
+    # FINAL SAFETY SWEEP: If ANY feature is still NaN, force it to 0.0
+    for key in features:
+        if np.isnan(features[key]) or np.isinf(features[key]):
+            features[key] = 0.0
     
 
     return features
+    
 
 
 # ---------------------------------------------------
