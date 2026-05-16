@@ -13,8 +13,13 @@ from sklearn.model_selection import LeaveOneGroupOut
 from preprocessing import create_feature_dataset
 
 # Constants
+<<<<<<< HEAD
 SEED = 10
 DATA_PATH = "data"
+=======
+SEED = 1000
+DATA_PATH = "data_without_sam"
+>>>>>>> thomas_finetune
 SEEDS_FOR_TESTING = [5, 10, 42, 100, 420, 1000, 21, 99, 88, 69]
 
 def load_and_preprocess_data(path):
