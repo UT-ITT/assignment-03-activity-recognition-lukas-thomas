@@ -14,7 +14,7 @@ from preprocessing import create_feature_dataset
 
 # Constants
 SEED = 1000
-DATA_PATH = "data"
+DATA_PATH = "data_without_sam"
 SEEDS_FOR_TESTING = [5, 10, 42, 100, 420, 1000, 21, 99, 88, 69]
 
 def load_and_preprocess_data(path):
