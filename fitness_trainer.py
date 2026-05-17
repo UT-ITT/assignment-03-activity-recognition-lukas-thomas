@@ -36,7 +36,12 @@ sensor = SensorUDP(PORT)
 data = [] # current data buffer
 DATA_PATH = "data"
 
+# train the classifier
+clf = activity.train_classifier()
+print("Classifier trained")
+
 # game parameters
+activities = ["jumpingjacks", "lifting", "rowing", "running"]
 activity_name = "lifting"  # current activity
 
 # create window
@@ -81,13 +86,6 @@ lifting_sprite.update(x=ANIMATION_POSITION[0] - lifting_sprite.width // 2)
 rowing_sprite.update(x=ANIMATION_POSITION[0] - rowing_sprite.width // 2)
 running_sprite.update(x=ANIMATION_POSITION[0] - running_sprite.width // 2)
 
-def train_classifier():
-    X, y, persons, encoder = activity.load_and_preprocess_data(DATA_PATH)
-    clf = activity.get_pipeline()
-    activity.run_single_evaluation(X, y, persons, 42, encoder, clf)
-
-    return clf
-
 def read_sensor_data(dt):
     acc = sensor.get_value("accelerometer")
     gyro = sensor.get_value("gyroscope")
@@ -113,17 +111,29 @@ def read_sensor_data(dt):
  
 # extract features 
 def transform_data_for_model(df):
-    return extract_features(df)
+    rows = []
+    features = extract_features(df)
+    rows.append(features)
+    feature_df = pd.DataFrame(rows)
+    return feature_df
 
-def predict_activity(classifier, transformed_data):
-    return classifier.predict(transformed_data)
-
-def update(dt, classifier):
-    global activity_name
+def update(dt):
+    global activity_name, text, clf
     df = read_sensor_data(dt)
-    transformed_data = transform_data_for_model(df)
-    activity_name = predict_activity(classifier, transformed_data)
+
+    if df.empty:
+        return  # Skip if no data is available yet
+    if len(df) < 1000:
+        return  # Wait until we have enough data for a full window
+    
+    #transform sensor data to features for the model
+    sensor_data_features = transform_data_for_model(df)
+    sensor_data_features = sensor_data_features.reindex(columns=clf.feature_columns).astype(float)  # Ensure correct feature order and handle missing features
+    pred = clf.predict(sensor_data_features)
+    activity_name = clf.label_encoder.inverse_transform([pred[0]])[0]
+    print(sensor_data_features)
     text.text = f'Current Activity: {activity_name}'
+
 
 @window.event
 def on_key_press(symbol, modifiers):
@@ -132,10 +142,11 @@ def on_key_press(symbol, modifiers):
 
 @window.event
 def on_draw():
+    global clf
     pyglet.gl.glClearColor(BACKGROUND_COLOR[0]/255, BACKGROUND_COLOR[1]/255, BACKGROUND_COLOR[2]/255, 1)
     window.clear()
     
-    if activity_name == "jumping_jacks":
+    if activity_name == "jumpingjacks":
         jumping_jacks_sprite.draw()
     elif activity_name == "lifting":
         lifting_sprite.draw()
@@ -146,8 +157,5 @@ def on_draw():
         
     text.draw()
 
-    print(data)
-    print(read_sensor_data(0))  # Print sensor data to console for debugging
-    print(clf)
-clf = train_classifier()
+pyglet.clock.schedule_interval(update, 0.01)
 pyglet.app.run()

@@ -69,9 +69,9 @@ def run_single_evaluation(X, y, persons, seed, label_encoder, show_plot=True, cl
     if show_plot:
         print(f"--- Results for Seed {seed} ---")
         print(f"Accuracy: {accuracy:.4f}")
-        plot_cm(y_test, y_pred, label_encoder.classes_, seed)
+        #plot_cm(y_test, y_pred, label_encoder.classes_, seed)
         
-    return accuracy
+    return clf, accuracy
 
 def run_multi_seed_test(X, y, persons, seeds):
     """Tests model stability across multiple random seeds."""
@@ -79,7 +79,7 @@ def run_multi_seed_test(X, y, persons, seeds):
     results = []
     for s in seeds:
         # Run without showing plots for brevity
-        acc = run_single_evaluation(X, y, persons, s, None, show_plot=False)
+        clf, acc = run_single_evaluation(X, y, persons, s, None, show_plot=False)
         results.append(acc)
     
     print(f"Mean Accuracy: {np.mean(results):.4f}")
@@ -107,6 +107,17 @@ def run_logo_evaluation(X, y, persons, label_encoder, classifier = get_pipeline(
     
     print(f"\nOverall LOGO Mean Accuracy: {np.mean(scores):.4f}")
 
+# Helper function to train the classifier and return it for use in the main loop
+def train_classifier():
+    X, y, persons, encoder = load_and_preprocess_data(DATA_PATH)
+    clf = get_pipeline()
+    clf, accuracy = run_single_evaluation(X, y, persons, 42, encoder, clf)
+
+    clf.label_encoder = encoder  # Attach encoder to the classifier for later use
+    clf.feature_columns = X.columns  # Attach feature column names for later use
+
+    return clf
+
 if __name__ == "__main__":
     # 1. Prepare Data
     print("Loading data...")
@@ -122,6 +133,6 @@ if __name__ == "__main__":
     run_logo_evaluation(X, y, persons, encoder)
 
     # Test for a specific classifier object on test features
-    # clf1 = get_pipeline()
-    # run_single_evaluation(X, y, persons, SEED, encoder, classifier=clf1)
+    # clf1 = train_classifier()
+    # run_logo_evaluation(X, y, persons, encoder, clf1)
     
