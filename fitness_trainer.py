@@ -173,7 +173,7 @@ def on_draw():
     elif counter >= 5 and counter < 8:
         counter_text.text = f"You already did {counter} seconds of {activity_name.capitalize()}! Great!"
     elif counter >= 8:
-        counter_text.text = f"You already did {counter} seconds of {activity_name.capitalize()}! Almost there! "
+        counter_text.text = f"Already {counter} seconds of {activity_name.capitalize()}! Almost there! "
     counter_text.draw()
     false_activity_text.draw()
 
