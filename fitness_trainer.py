@@ -10,11 +10,6 @@ import os
 import numpy as np
 from collections import deque, Counter
 
-# Todos
-# Scale all images to same size
-# Windowing separat machen im activity recognizer
-# Counter für activity einfügen
-
 # Windows settings
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
@@ -32,7 +27,7 @@ TEXT_FONT_SIZE = 24
 TEXT_FONT_NAME = 'Arial'
 ACTIVITY_TEXT_POSITION = (WINDOW_WIDTH // 2, WINDOW_HEIGHT - 100)
 COUNTER_TEXT_POSITION = (WINDOW_WIDTH // 2, WINDOW_HEIGHT - 500)
-FALSE_ACTIVITY_TEXT_POSITION = (WINDOW_WIDTH // 2, WINDOW_HEIGHT - 550)
+FALSE_ACTIVITY_TEXT_POSITION = (WINDOW_WIDTH // 2, WINDOW_HEIGHT - 560)
 
 # create sensor
 sensor = SensorUDP(PORT)
@@ -145,10 +140,7 @@ def predict(dt):
         counter += 1
         false_activity_text.text = ""
     else:
-        if activity_name == "jumpingjacks":
-            false_activity_text.text = f"These are not {activity_name.capitalize()}! Come on!"
-        else:
-            false_activity_text.text = f"That's not {activity_name.capitalize()}! Come on!"
+        false_activity_text.text = f"Keep going!"
     if counter >= 10: # if the same activity was predicted 10 times in a row, choose a new one
         counter = 0
         choose_activity(0)
@@ -179,9 +171,9 @@ def on_draw():
     if counter > 0  and counter < 5:
         counter_text.text = f"You already did {counter} seconds of {activity_name.capitalize()}!"
     elif counter >= 5 and counter < 8:
-        counter_text.text = f"You already did {counter} seconds of {activity_name.capitalize()}! Great! But Keep going!"
+        counter_text.text = f"You already did {counter} seconds of {activity_name.capitalize()}! Great!"
     elif counter >= 8:
-        counter_text.text = f"You already did {counter} seconds of {activity_name.capitalize()}! We are Almost there! "
+        counter_text.text = f"You already did {counter} seconds of {activity_name.capitalize()}! Almost there! "
     counter_text.draw()
     false_activity_text.draw()
 

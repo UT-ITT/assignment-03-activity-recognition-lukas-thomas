@@ -114,7 +114,7 @@ def train_classifier():
     print("Please wait, this may take a moment...")
     X, y, persons, encoder = load_and_preprocess_data(DATA_PATH)
     clf = get_pipeline()
-    clf, accuracy = run_single_evaluation(X, y, persons, 42, encoder,False, clf)
+    clf, accuracy = run_single_evaluation(X, y, persons, 1000, encoder,False, clf)
 
     clf.label_encoder = encoder  # Attach encoder to the classifier for later use
     clf.feature_columns = X.columns  # Attach feature column names for later use
@@ -122,20 +122,29 @@ def train_classifier():
     return clf
 
 if __name__ == "__main__":
-    # 1. Prepare Data
-    print("Loading data...")
-    X, y, persons, encoder = load_and_preprocess_data(DATA_PATH)
-    
-    # 2. Single Run (with Plotting)
-    run_single_evaluation(X, y, persons, SEED, encoder)
-    
-    # 3. Robustness Check (Multiple Seeds)
-    run_multi_seed_test(X, y, persons, SEEDS_FOR_TESTING)
+    # Um auf eigenen Daten zu testen test auf True setzen und Datensatz in test_data speichern:
+    test = False
+    if test:
+        # create a classifier
+        clf = train_classifier()
+        # preprocess test data
+        df = create_feature_dataset("test_data")
+        X_test = df.drop(columns=["activity", "person"])
+        y_test = df["activity"]
+        # evaluate on test data
+        accuracy = clf.score(X_test, y_test)
+    else:
+        # 1. Prepare Data
+        print("Loading data...")
+        X, y, persons, encoder = load_and_preprocess_data(DATA_PATH)
+        
+        # 2. Single Run (with Plotting)
+        run_single_evaluation(X, y, persons, SEED, encoder)
+        
+        # 3. Robustness Check (Multiple Seeds)
+        run_multi_seed_test(X, y, persons, SEEDS_FOR_TESTING)
 
-    # 4 LOGO 
-    run_logo_evaluation(X, y, persons, encoder)
+        # 4 LOGO 
+        run_logo_evaluation(X, y, persons, encoder)
 
-    # Test for a specific classifier object on test features
-    # clf1 = train_classifier()
-    # run_logo_evaluation(X, y, persons, encoder, clf1)
-    
+        
