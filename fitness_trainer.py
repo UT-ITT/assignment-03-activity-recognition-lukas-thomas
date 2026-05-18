@@ -1,4 +1,161 @@
 # this program visualizes activities with pyglet
 
+import time
 import activity_recognizer as activity
+from preprocessing import extract_features
 import pyglet
+from DIPPID import SensorUDP
+import pandas as pd
+import os
+
+# Todos
+# Read in data from dippid device
+# Transform data with functions for the model
+# Run model to get activity prediction
+# Scale all images to same size
+
+# Windows settings
+WINDOW_WIDTH = 800
+WINDOW_HEIGHT = 600
+BACKGROUND_COLOR = (0, 31, 63)
+
+PORT = 5700
+
+# Animation settings
+ANIMATION_FRAME_RATE = 0.5  # seconds per frame
+ANIMATION_POSITION = (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 5)  # x, y position of the animation on the window
+
+# Text settings
+TEXT_COLOR = (255, 255, 255, 255)  # white
+TEXT_POSITION = (WINDOW_WIDTH // 2, WINDOW_HEIGHT - 100)
+TEXT_FONT_SIZE = 24
+TEXT_FONT_NAME = 'Arial'
+
+# create sensor
+sensor = SensorUDP(PORT)
+data = [] # current data buffer
+DATA_PATH = "data"
+
+# train the classifier
+clf = activity.train_classifier()
+print("Classifier trained")
+
+# game parameters
+activities = ["jumpingjacks", "lifting", "rowing", "running"]
+activity_name = "lifting"  # current activity
+
+# create window
+window = pyglet.window.Window(WINDOW_WIDTH, WINDOW_HEIGHT)
+
+# create text label
+text = pyglet.text.Label('Current Activity: ', font_name=TEXT_FONT_NAME, font_size=TEXT_FONT_SIZE, x=TEXT_POSITION[0], y=TEXT_POSITION[1], anchor_x='center', color=TEXT_COLOR)
+
+# load images for activities
+jumping_jacks_images = [pyglet.resource.image('img/jumpingjack_1.png'),
+                         pyglet.resource.image('img/jumpingjack_2.png')]
+
+lifting_images = [pyglet.resource.image('img/lifting_1.png'),
+                   pyglet.resource.image('img/lifting_2.png')]
+
+rowing_images = [pyglet.resource.image('img/rowing_1.png'),
+                 pyglet.resource.image('img/rowing_2.png')]
+
+running_images = [pyglet.resource.image('img/running_1.png'),
+                  pyglet.resource.image('img/running_2.png')]
+
+# create animations for activities
+jumping_jacks_animation = pyglet.image.Animation.from_image_sequence(jumping_jacks_images, ANIMATION_FRAME_RATE, loop=True)
+lifting_animation = pyglet.image.Animation.from_image_sequence(lifting_images, ANIMATION_FRAME_RATE, loop=True)
+rowing_animation = pyglet.image.Animation.from_image_sequence(rowing_images, ANIMATION_FRAME_RATE, loop=True)
+running_animation = pyglet.image.Animation.from_image_sequence(running_images, ANIMATION_FRAME_RATE, loop=True)
+
+# create sprites for each animation
+jumping_jacks_sprite = pyglet.sprite.Sprite(jumping_jacks_animation, ANIMATION_POSITION[0], ANIMATION_POSITION[1])
+lifting_sprite = pyglet.sprite.Sprite(lifting_animation, ANIMATION_POSITION[0], ANIMATION_POSITION[1])
+rowing_sprite = pyglet.sprite.Sprite(rowing_animation, ANIMATION_POSITION[0], ANIMATION_POSITION[1])
+running_sprite = pyglet.sprite.Sprite(running_animation, ANIMATION_POSITION[0], ANIMATION_POSITION[1])
+
+# Scale sprites to fit the window
+jumping_jacks_sprite.update(scale=0.3)
+lifting_sprite.update(scale=0.3)
+rowing_sprite.update(scale=0.3)
+running_sprite.update(scale=0.3)
+
+jumping_jacks_sprite.update(x=ANIMATION_POSITION[0] - jumping_jacks_sprite.width // 2)
+lifting_sprite.update(x=ANIMATION_POSITION[0] - lifting_sprite.width // 2)
+rowing_sprite.update(x=ANIMATION_POSITION[0] - rowing_sprite.width // 2)
+running_sprite.update(x=ANIMATION_POSITION[0] - running_sprite.width // 2)
+
+def read_sensor_data(dt):
+    acc = sensor.get_value("accelerometer")
+    gyro = sensor.get_value("gyroscope")
+    timestamp = time.time()
+
+    if len(data) > 1002:  # limit buffer size to last 1000 readings
+        data.pop(0)
+    # only save if both sensors exist
+    if acc is not None and gyro is not None:
+        row = {
+            "timestamp": timestamp,
+            "acc_x": acc["x"],
+            "acc_y": acc["y"],
+            "acc_z": acc["z"],
+            "gyro_x": gyro["x"],
+            "gyro_y": gyro["y"],
+            "gyro_z": gyro["z"]
+        }
+
+        data.append(row)
+    df = pd.DataFrame(data)
+    return df
+ 
+# extract features 
+def transform_data_for_model(df):
+    rows = []
+    features = extract_features(df)
+    rows.append(features)
+    feature_df = pd.DataFrame(rows)
+    return feature_df
+
+def update(dt):
+    global activity_name, text, clf
+    df = read_sensor_data(dt)
+
+    if df.empty:
+        return  # Skip if no data is available yet
+    if len(df) < 1000:
+        return  # Wait until we have enough data for a full window
+    
+    #transform sensor data to features for the model
+    sensor_data_features = transform_data_for_model(df)
+    sensor_data_features = sensor_data_features.reindex(columns=clf.feature_columns).astype(float)  # Ensure correct feature order and handle missing features
+    pred = clf.predict(sensor_data_features)
+    activity_name = clf.label_encoder.inverse_transform([pred[0]])[0]
+    print(sensor_data_features)
+    text.text = f'Current Activity: {activity_name}'
+
+
+@window.event
+def on_key_press(symbol, modifiers):
+    if symbol == pyglet.window.key.Q:   # Press Q to quit the game
+        os._exit(0)
+
+@window.event
+def on_draw():
+    global clf
+    pyglet.gl.glClearColor(BACKGROUND_COLOR[0]/255, BACKGROUND_COLOR[1]/255, BACKGROUND_COLOR[2]/255, 1)
+    window.clear()
+    
+    if activity_name == "jumpingjacks":
+        jumping_jacks_sprite.draw()
+    elif activity_name == "lifting":
+        lifting_sprite.draw()
+    elif activity_name == "rowing":
+        rowing_sprite.draw()
+    elif activity_name == "running":
+        running_sprite.draw()
+        
+    text.draw()
+
+pyglet.clock.schedule_interval(update, 0.01)
+pyglet.app.run()
