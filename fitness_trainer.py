@@ -12,6 +12,8 @@ from collections import deque, Counter
 
 # Todos
 # Scale all images to same size
+# Windowing separat machen im activity recognizer
+# Counter für activity einfügen
 
 # Windows settings
 WINDOW_WIDTH = 800
@@ -33,7 +35,6 @@ TEXT_FONT_NAME = 'Arial'
 # create sensor
 sensor = SensorUDP(PORT)
 data_buffer = deque(maxlen=100) # current data buffer
-#prediction_buffer = deque(maxlen=3) # buffer to hold last 3 predictions for majority voting
 DATA_PATH = "data"
 
 # train the classifier
@@ -76,15 +77,21 @@ rowing_sprite = pyglet.sprite.Sprite(rowing_animation, ANIMATION_POSITION[0], AN
 running_sprite = pyglet.sprite.Sprite(running_animation, ANIMATION_POSITION[0], ANIMATION_POSITION[1])
 
 # Scale sprites to fit the window
-jumping_jacks_sprite.update(scale=0.3)
-lifting_sprite.update(scale=0.3)
-rowing_sprite.update(scale=0.3)
-running_sprite.update(scale=0.3)
+TARGET_WIDTH = int(WINDOW_WIDTH * 0.5)
+TARGET_HEIGHT = int(WINDOW_HEIGHT * 0.5)
 
-jumping_jacks_sprite.update(x=ANIMATION_POSITION[0] - jumping_jacks_sprite.width // 2)
-lifting_sprite.update(x=ANIMATION_POSITION[0] - lifting_sprite.width // 2)
-rowing_sprite.update(x=ANIMATION_POSITION[0] - rowing_sprite.width // 2)
-running_sprite.update(x=ANIMATION_POSITION[0] - running_sprite.width // 2)
+def fit_sprite(sprite):
+    scale = min(TARGET_WIDTH / sprite.width, TARGET_HEIGHT / sprite.height)
+    sprite.update(scale=scale)
+    sprite.update(
+        x=(WINDOW_WIDTH - sprite.width) // 2,
+        y=(WINDOW_HEIGHT - sprite.height) // 2,
+    )
+
+fit_sprite(jumping_jacks_sprite)
+fit_sprite(lifting_sprite)
+fit_sprite(rowing_sprite)
+fit_sprite(running_sprite)
  
 # extract features 
 def transform_data_for_model(df):
@@ -110,9 +117,9 @@ def collect(dt):
 
         data_buffer.append(row)
 
-    #ts = np.array([r["timestamp"] for r in data_buffer])
-    #sr = 1.0 / np.mean(np.diff(ts))
-    #print(f"Collected {len(data_buffer)} samples at ~{sr:.1f} Hz")
+    ts = np.array([r["timestamp"] for r in data_buffer])
+    sr = 1.0 / np.mean(np.diff(ts))
+    print(f"Collected {len(data_buffer)} samples at ~{sr:.1f} Hz")
 
 # predict activity based on collected data
 def predict(dt):
@@ -120,11 +127,8 @@ def predict(dt):
     if len(data_buffer) < 100: return
     window_df = pd.DataFrame(list(data_buffer))[-100:].reset_index(drop=True)
     feats = transform_data_for_model(window_df)
-    feats = feats.reindex(columns=list(clf.feature_columns)).astype(float)
+    feats = feats.reindex(columns=list(clf.feature_columns)).fillna(0).astype(float)
     pred = clf.predict(feats)[0]
-    # smoothing predictions with majority voting
-    # prediction_buffer.append(pred)
-    # prediction_smoothed = Counter(prediction_buffer).most_common(1)[0][0]  # Get the most common prediction in the buffer
     activity_name = clf.label_encoder.inverse_transform([pred])[0]
     text.text = f'Current Activity: {activity_name}'
     print(activity_name)
@@ -150,7 +154,6 @@ def on_draw():
         running_sprite.draw()
         
     text.draw()
-    #print(prediction_buffer)
 
 pyglet.clock.schedule_interval(collect, 0.01)
 pyglet.clock.schedule_interval(predict, 1.0)

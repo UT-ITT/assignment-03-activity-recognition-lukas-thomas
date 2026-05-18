@@ -66,10 +66,11 @@ def run_single_evaluation(X, y, persons, seed, label_encoder, show_plot=True, cl
     accuracy = clf.score(X_test, y_test)
     y_pred = clf.predict(X_test)
     
+    print(f"--- Results for Seed {seed} ---")
+    print(f"Accuracy: {accuracy:.4f}")
+
     if show_plot:
-        print(f"--- Results for Seed {seed} ---")
-        print(f"Accuracy: {accuracy:.4f}")
-        #plot_cm(y_test, y_pred, label_encoder.classes_, seed)
+        plot_cm(y_test, y_pred, label_encoder.classes_, seed)
         
     return clf, accuracy
 
@@ -113,7 +114,7 @@ def train_classifier():
     print("Please wait, this may take a moment...")
     X, y, persons, encoder = load_and_preprocess_data(DATA_PATH)
     clf = get_pipeline()
-    clf, accuracy = run_single_evaluation(X, y, persons, 42, encoder, clf)
+    clf, accuracy = run_single_evaluation(X, y, persons, 42, encoder,False, clf)
 
     clf.label_encoder = encoder  # Attach encoder to the classifier for later use
     clf.feature_columns = X.columns  # Attach feature column names for later use

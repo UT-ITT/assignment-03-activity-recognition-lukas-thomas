@@ -85,9 +85,12 @@ def extract_features(df):
         freqs = np.fft.rfftfreq(len(values), d=1/fs)
         
         # We only need the dominant frequency and the total energy
-        features[f"{col}_dom_freq"] = freqs[np.argmax(fft_values[1:]) + 1]
-        features[f"{col}_2dom_freq"] = freqs[np.argmax(fft_values[1:]) + 2]
-        features[f"{col}_3dom_freq"] = freqs[np.argmax(fft_values[1:]) + 3]
+        power = fft_values[1:]
+        top_indices = np.argsort(power)[-3:][::-1] + 1
+
+        features[f"{col}_dom_freq"] = freqs[top_indices[0]]
+        features[f"{col}_2dom_freq"] = freqs[top_indices[1]] if len(top_indices) > 1 else 0.0
+        features[f"{col}_3dom_freq"] = freqs[top_indices[2]] if len(top_indices) > 2 else 0.0
         features[f"{col}_energy"] = np.sum(fft_values**2) / len(values)
         
     features['gyro_acc_energy_ratio'] = features['gyro_mag_energy'] / (features['acc_mag_energy'] + 1e-9)
