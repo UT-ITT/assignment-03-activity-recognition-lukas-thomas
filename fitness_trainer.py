@@ -7,11 +7,10 @@ import pyglet
 from DIPPID import SensorUDP
 import pandas as pd
 import os
+import numpy as np
+from collections import deque, Counter
 
 # Todos
-# Read in data from dippid device
-# Transform data with functions for the model
-# Run model to get activity prediction
 # Scale all images to same size
 
 # Windows settings
@@ -33,7 +32,8 @@ TEXT_FONT_NAME = 'Arial'
 
 # create sensor
 sensor = SensorUDP(PORT)
-data = [] # current data buffer
+data_buffer = deque(maxlen=100) # current data buffer
+prediction_buffer = deque(maxlen=3) # buffer to hold last 3 predictions for majority voting
 DATA_PATH = "data"
 
 # train the classifier
@@ -85,29 +85,6 @@ jumping_jacks_sprite.update(x=ANIMATION_POSITION[0] - jumping_jacks_sprite.width
 lifting_sprite.update(x=ANIMATION_POSITION[0] - lifting_sprite.width // 2)
 rowing_sprite.update(x=ANIMATION_POSITION[0] - rowing_sprite.width // 2)
 running_sprite.update(x=ANIMATION_POSITION[0] - running_sprite.width // 2)
-
-def read_sensor_data(dt):
-    acc = sensor.get_value("accelerometer")
-    gyro = sensor.get_value("gyroscope")
-    timestamp = time.time()
-
-    if len(data) > 1002:  # limit buffer size to last 1000 readings
-        data.pop(0)
-    # only save if both sensors exist
-    if acc is not None and gyro is not None:
-        row = {
-            "timestamp": timestamp,
-            "acc_x": acc["x"],
-            "acc_y": acc["y"],
-            "acc_z": acc["z"],
-            "gyro_x": gyro["x"],
-            "gyro_y": gyro["y"],
-            "gyro_z": gyro["z"]
-        }
-
-        data.append(row)
-    df = pd.DataFrame(data)
-    return df
  
 # extract features 
 def transform_data_for_model(df):
@@ -117,23 +94,40 @@ def transform_data_for_model(df):
     feature_df = pd.DataFrame(rows)
     return feature_df
 
-def update(dt):
-    global activity_name, text, clf
-    df = read_sensor_data(dt)
+# collect data from dippid device
+def collect(dt):
+    acc = sensor.get_value("accelerometer"); gyro = sensor.get_value("gyroscope")
+    if acc and gyro:
+        row = {
+            "timestamp": time.perf_counter(),
+            "acc_x": acc["x"],
+            "acc_y": acc["y"],
+            "acc_z": acc["z"],
+            "gyro_x": gyro["x"],
+            "gyro_y": gyro["y"],
+            "gyro_z": gyro["z"]
+        }
 
-    if df.empty:
-        return  # Skip if no data is available yet
-    if len(df) < 1000:
-        return  # Wait until we have enough data for a full window
-    
-    #transform sensor data to features for the model
-    sensor_data_features = transform_data_for_model(df)
-    sensor_data_features = sensor_data_features.reindex(columns=clf.feature_columns).astype(float)  # Ensure correct feature order and handle missing features
-    pred = clf.predict(sensor_data_features)
-    activity_name = clf.label_encoder.inverse_transform([pred[0]])[0]
-    print(sensor_data_features)
+        data_buffer.append(row)
+
+    #ts = np.array([r["timestamp"] for r in data_buffer])
+    #sr = 1.0 / np.mean(np.diff(ts))
+    #print(f"Collected {len(data_buffer)} samples at ~{sr:.1f} Hz")
+
+# predict activity based on collected data
+def predict(dt):
+    global activity_name
+    if len(data_buffer) < 100: return
+    window_df = pd.DataFrame(list(data_buffer))[-100:].reset_index(drop=True)
+    feats = transform_data_for_model(window_df)
+    feats = feats.reindex(columns=list(clf.feature_columns)).astype(float)
+    pred = clf.predict(feats)[0]
+    # smoothing predictions with majority voting
+    prediction_buffer.append(pred)
+    prediction_smoothed = Counter(prediction_buffer).most_common(1)[0][0]  # Get the most common prediction in the buffer
+    activity_name = clf.label_encoder.inverse_transform([prediction_smoothed])[0]
     text.text = f'Current Activity: {activity_name}'
-
+    print(activity_name)
 
 @window.event
 def on_key_press(symbol, modifiers):
@@ -156,6 +150,8 @@ def on_draw():
         running_sprite.draw()
         
     text.draw()
+    print(prediction_buffer)
 
-pyglet.clock.schedule_interval(update, 0.01)
+pyglet.clock.schedule_interval(collect, 0.01)
+pyglet.clock.schedule_interval(predict, 1.0)
 pyglet.app.run()

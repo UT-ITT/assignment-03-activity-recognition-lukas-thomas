@@ -138,7 +138,7 @@ def get_person_from_filename(filename):
     # assumes structure: name-activity-number.csv
     return parts[0]
 
-def segment_data(df, window_size=200, step_size=100):
+def segment_data(df, window_size=100, step_size=50):
     """
     Splits a DataFrame into segments of a fixed size.
     
@@ -147,9 +147,9 @@ def segment_data(df, window_size=200, step_size=100):
     df : pd.DataFrame
         The full recording.
     window_size : int
-        Number of samples per window (e.g., 200 for 2 seconds at 100Hz).
+        Number of samples per window (e.g., 100 for 1 second at 100Hz).
     step_size : int
-        Number of samples to slide the window. 100 = 50% overlap.
+        Number of samples to slide the window. 50 = 50% overlap.
         
     Yields
     ------
@@ -164,7 +164,7 @@ def segment_data(df, window_size=200, step_size=100):
 # MAIN DATASET CREATION
 # ---------------------------------------------------
 
-def create_feature_dataset(data_dir, window_size=200, step_size=100):
+def create_feature_dataset(data_dir, window_size=100, step_size=50):
     rows = []
     csv_files = list(Path(data_dir).glob("*.csv"))
 

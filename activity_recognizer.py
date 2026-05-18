@@ -109,6 +109,8 @@ def run_logo_evaluation(X, y, persons, label_encoder, classifier = get_pipeline(
 
 # Helper function to train the classifier and return it for use in the main loop
 def train_classifier():
+    print("Training classifier for real-time prediction...")
+    print("Please wait, this may take a moment...")
     X, y, persons, encoder = load_and_preprocess_data(DATA_PATH)
     clf = get_pipeline()
     clf, accuracy = run_single_evaluation(X, y, persons, 42, encoder, clf)
