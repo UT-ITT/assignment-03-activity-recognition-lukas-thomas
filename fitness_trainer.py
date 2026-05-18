@@ -33,7 +33,7 @@ TEXT_FONT_NAME = 'Arial'
 # create sensor
 sensor = SensorUDP(PORT)
 data_buffer = deque(maxlen=100) # current data buffer
-prediction_buffer = deque(maxlen=3) # buffer to hold last 3 predictions for majority voting
+#prediction_buffer = deque(maxlen=3) # buffer to hold last 3 predictions for majority voting
 DATA_PATH = "data"
 
 # train the classifier
@@ -123,9 +123,9 @@ def predict(dt):
     feats = feats.reindex(columns=list(clf.feature_columns)).astype(float)
     pred = clf.predict(feats)[0]
     # smoothing predictions with majority voting
-    prediction_buffer.append(pred)
-    prediction_smoothed = Counter(prediction_buffer).most_common(1)[0][0]  # Get the most common prediction in the buffer
-    activity_name = clf.label_encoder.inverse_transform([prediction_smoothed])[0]
+    # prediction_buffer.append(pred)
+    # prediction_smoothed = Counter(prediction_buffer).most_common(1)[0][0]  # Get the most common prediction in the buffer
+    activity_name = clf.label_encoder.inverse_transform([pred])[0]
     text.text = f'Current Activity: {activity_name}'
     print(activity_name)
 
@@ -150,7 +150,7 @@ def on_draw():
         running_sprite.draw()
         
     text.draw()
-    print(prediction_buffer)
+    #print(prediction_buffer)
 
 pyglet.clock.schedule_interval(collect, 0.01)
 pyglet.clock.schedule_interval(predict, 1.0)
