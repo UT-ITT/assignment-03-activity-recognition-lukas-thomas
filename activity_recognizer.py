@@ -18,9 +18,9 @@ DATA_PATH = "data"
 
 SEEDS_FOR_TESTING = [5, 10, 42, 100, 420, 1000, 21, 99, 88, 69]
 
-def load_and_preprocess_data(path, window_size=250, step_size=125):
+def load_and_preprocess_data(path, windowing = False, window_size=100, step_size=50):
     """Loads dataset and encodes labels."""
-    df = create_feature_dataset(path)
+    df = create_feature_dataset(path, windowing, window_size=window_size, step_size=step_size)
     
     X = df.drop(columns=["activity", "person"])
     y_raw = df["activity"]
@@ -112,7 +112,19 @@ def run_logo_evaluation(X, y, persons, label_encoder, classifier = get_pipeline(
 def train_classifier():
     print("Training classifier for real-time prediction...")
     print("Please wait, this may take a moment...")
-    X, y, persons, encoder = load_and_preprocess_data(DATA_PATH)
+    X, y, persons, encoder = load_and_preprocess_data(DATA_PATH, windowing=True)
+    clf = get_pipeline()
+    clf, accuracy = run_single_evaluation(X, y, persons, 1000, encoder,False, clf)
+
+    clf.label_encoder = encoder  # Attach encoder to the classifier for later use
+    clf.feature_columns = X.columns  # Attach feature column names for later use
+
+    return clf
+
+def train_classifier_without_windowing():
+    print("Training classifier without windowing for real-time prediction...")
+    print("Please wait, this may take a moment...")
+    X, y, persons, encoder = load_and_preprocess_data(DATA_PATH, windowing=False)
     clf = get_pipeline()
     clf, accuracy = run_single_evaluation(X, y, persons, 1000, encoder,False, clf)
 
@@ -126,7 +138,7 @@ if __name__ == "__main__":
     test = False
     if test:
         # create a classifier
-        clf = train_classifier()
+        clf = train_classifier_without_windowing()
         # preprocess test data
         df = create_feature_dataset("test_data")
         X_test = df.drop(columns=["activity", "person"])

@@ -167,17 +167,27 @@ def segment_data(df, window_size=100, step_size=50):
 # MAIN DATASET CREATION
 # ---------------------------------------------------
 
-def create_feature_dataset(data_dir, window_size=100, step_size=50):
+def create_feature_dataset(data_dir, windowing = False, window_size=100, step_size=50):
     rows = []
     csv_files = list(Path(data_dir).glob("*.csv"))
 
     for file_path in csv_files:
         df = pd.read_csv(file_path)
         
-        # Segment the data into windows
-        for segment in segment_data(df, window_size, step_size):
-            # Extract features from the segment instead of the whole df
-            features = extract_features(segment)
+        if windowing:
+            # Segment the data into windows
+            for segment in segment_data(df, window_size, step_size):
+                # Extract features from the segment instead of the whole df
+                features = extract_features(segment)
+
+                # Add labels and metadata
+                features["activity"] = get_activity_from_filename(file_path.name)
+                features["person"] = get_person_from_filename(file_path.name)
+                
+                rows.append(features)
+        else:
+            # Extract features from the whole recording
+            features = extract_features(df)
 
             # Add labels and metadata
             features["activity"] = get_activity_from_filename(file_path.name)
