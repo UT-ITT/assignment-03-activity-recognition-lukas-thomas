@@ -177,6 +177,6 @@ def on_draw():
     counter_text.draw()
     false_activity_text.draw()
 
-pyglet.clock.schedule_interval(collect, 0.01)
-pyglet.clock.schedule_interval(predict, 1.0)
+pyglet.clock.schedule_interval(collect, 0.01) # collect data every 10ms (100Hz)
+pyglet.clock.schedule_interval(predict, 1.0) # predict every second
 pyglet.app.run()
